@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class CreateTransactionRequest {
-    private long transactionAmount;
+    private long amount;
     private String senderAccountId;
     private String recipientAccountId;
 }

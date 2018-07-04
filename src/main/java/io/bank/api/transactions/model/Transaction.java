@@ -20,7 +20,7 @@ public class Transaction {
         return Transaction.builder()
                 .id(getShortId())
                 .created(LocalDateTime.now().toString())
-                .amount(request.getTransactionAmount())
+                .amount(request.getAmount())
                 .senderId(request.getSenderAccountId())
                 .recipientId(request.getRecipientAccountId())
                 .build();

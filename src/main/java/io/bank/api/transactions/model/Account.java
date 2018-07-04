@@ -18,7 +18,7 @@ public class Account {
         return Account.builder()
                 .id(getShortId())
                 .created(LocalDateTime.now().toString())
-                .balance(request.getInitialBalance())
+                .balance(request.getBalance())
                 .build();
     }
 }
