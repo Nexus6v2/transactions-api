@@ -1,22 +1,66 @@
 plugins {
     id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '2.0.1'
     id 'io.franzbecker.gradle-lombok' version '1.14'
 }
-
-group 'io.bank.api.transactions'
-version '1.0'
-
-sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
 }
 
+version = '1.0.0'
+sourceCompatibility = '1.8'
+
+mainClassName = 'io.vertx.core.Launcher'
+def mainVerticle = 'io.bank.api.transactions.verticles.MainVerticle'
+
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    // Vert.x
+    compile "io.vertx:vertx-rx-java:3.5.2"
+    compile "io.vertx:vertx-web:3.5.2"
+
+    // Redis
+    compile 'biz.paluch.redis:lettuce:4.4.0.Final'
+    compile 'com.github.kstyrc:embedded-redis:0.6'
+
+    // Utils
+    compile 'org.apache.commons:commons-pool2:2.4.3'
+
+    // Serialization
+    compile 'com.fasterxml.jackson.core:jackson-core:2.7.3'
+    compile 'com.fasterxml.jackson.core:jackson-annotations:2.7.3'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.7.3'
+
+    // Tests
+    testCompile 'junit:junit:4.12'
+}
+
+shadowJar {
+    classifier = ''
+
+    manifest {
+        attributes 'Main-Verticle': mainVerticle
+    }
+
+    mergeServiceFiles {
+        include 'META-INF/handlers/io.vertx.core.spi.VerticleFactory'
+    }
+}
+
+run {
+  args = ['run', mainVerticle]
+}
+
+compileJava {
+    options.incremental = true
 }
 
 lombok {
     version = "1.16.20"
     sha256 = "c5178b18caaa1a15e17b99ba5e4023d2de2ebc18b58cde0f5a04ca4b31c10e6d"
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '4.8'
 }
