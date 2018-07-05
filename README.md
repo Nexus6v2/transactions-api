@@ -9,9 +9,10 @@ API would be available on default port `8080`. Redis embedder server would be st
 To terminate http and redis servers just use SIGINT (Ctrl + C).
 
 ## How to test
-`./gradlew test`
+`./gradlew clean test`
 
 ## API
+* `/health` - healthcheck 
 1. Accounts
     * `/accounts #GET` - get list of all existing accounts
     * `/accounts #POST` - create new account. Request body: 
@@ -39,8 +40,8 @@ To terminate http and redis servers just use SIGINT (Ctrl + C).
 ## Frameworks and libraries
 
 * `Vert.x` - lightweight Netty-based framework for building reactive applications
-* `Lombok` - generating boilerplate Java code (Accessors, Object methods, Builder methods) in compile-time 
+* `Lombok` - generating boilerplate Java code (accessors, checked exceptions, Object and Builder methods) in compile-time 
 * `RxJava` - composing asynchronous and event-based programs by using observable sequences
 * `Lettuce` - awesome Redis client with RxJava support
-* `embedded-redis` - creating embedded Redis server
-
+* `embedded-redis` - simple embedded Redis server
+* `JUnit` - testing classics
