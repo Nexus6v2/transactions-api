@@ -27,11 +27,10 @@ public class RedisDao {
     private static final String ACCOUNT_BALANCE = "balance";
     private static final String ACCOUNT_CREATED = "created";
     
-    private final RedisClient redisClient;
     private final GenericObjectPool<StatefulRedisConnection<String, String>> connectionPool;
     
     public RedisDao(RedisURI redisURI) {
-        this.redisClient = RedisClient.create(redisURI);
+        RedisClient redisClient = RedisClient.create(redisURI);
         this.connectionPool = ConnectionPoolSupport.createGenericObjectPool(redisClient::connect, new GenericObjectPoolConfig());
     }
     
@@ -51,18 +50,29 @@ public class RedisDao {
     }
     
     public Single<String> getValue(String valueKey) {
-        RedisReactiveCommands<String, String> connection = redisClient.connect().reactive();
+        RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
         return connection.get(valueKey)
                 .toSingle()
                 .subscribeOn(Schedulers.io())
                 .doAfterTerminate(connection::close);
     }
     
-    public Single<Boolean> deleteHash(String hashKey) {
+    public Single<Boolean> deleteValue(String valueKey) {
+        RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
+        // If response is not 0 - value has been deleted
+        return connection.del(valueKey)
+                .toSingle()
+                .subscribeOn(Schedulers.io())
+                .map(response -> response != 0)
+                .doAfterTerminate(connection::close);
+    }
+    
+    public Single<Boolean> deleteAccount(String hashKey) {
         RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
         // If response is not 0 - hash has been deleted
-        return connection.hdel(hashKey)
+        return connection.hdel(hashKey, ACCOUNT_ID, ACCOUNT_CREATED, ACCOUNT_BALANCE)
                 .toSingle()
+                .subscribeOn(Schedulers.io())
                 .map(response -> response != 0)
                 .doAfterTerminate(connection::close);
     }
@@ -90,7 +100,7 @@ public class RedisDao {
         RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
     
         //Establishing transaction data
-        long transactionAmount = transaction.getAmount();
+        long transactionAmount = Long.valueOf(transaction.getAmount());
         String senderKey = getAccountKey(transaction.getSenderId());
         String recipientKey = getAccountKey(transaction.getRecipientId());
         
@@ -128,6 +138,12 @@ public class RedisDao {
                     
                     return connection.get(transactionKey).toSingle();
                 }).toBlocking().single();
+    }
+    
+    public void flushAll() {
+        StatefulRedisConnection<String, String> connection = borrowConnection();
+        connection.sync().flushall();
+        connection.close();
     }
     
     @SneakyThrows

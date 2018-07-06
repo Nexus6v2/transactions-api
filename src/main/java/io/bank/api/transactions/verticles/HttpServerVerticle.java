@@ -74,12 +74,12 @@ public class HttpServerVerticle extends AbstractVerticle {
         router.get("/accounts/:accountId").handler(accountsHandler::getAccount);
         router.post("/accounts").handler(accountsHandler::createAccount);
         router.delete("/accounts/:accountId").handler(accountsHandler::deleteAccount);
-        router.get("/accounts/:accountId/transactions").handler(accountsHandler::getAccountsTransactions);
     
         // Transaction request handlers
         TransactionsHandler transactionsHandler = new TransactionsHandler(redisDao);
         router.get("/transactions").handler(transactionsHandler::getAllTransactions);
         router.get("/transactions/:transactionId").handler(transactionsHandler::getTransaction);
+        router.get("/accounts/:accountId/transactions").handler(transactionsHandler::getAccountsTransactions);
         router.post("/transactions").handler(transactionsHandler::createTransaction);
     
         return router;

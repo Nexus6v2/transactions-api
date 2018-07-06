@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'idea'
+    id 'groovy'
     id 'application'
     id 'com.github.johnrengelman.shadow' version '2.0.1'
     id 'io.franzbecker.gradle-lombok' version '1.14'
@@ -11,9 +13,6 @@ repositories {
 
 version = '1.0.0'
 sourceCompatibility = '1.8'
-
-mainClassName = 'io.vertx.core.Launcher'
-def mainVerticle = 'io.bank.api.transactions.verticles.MainVerticle'
 
 dependencies {
     // Vert.x
@@ -33,9 +32,13 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-databind:2.7.3'
 
     // Tests
-    testCompile 'junit:junit:4.12'
-    testCompile 'io.vertx:vertx-unit:3.5.2'
+    testCompile 'org.spockframework:spock-core:1.1-groovy-2.4'
+    testCompile 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'
+    compile 'org.skyscreamer:jsonassert:1.5.0'
 }
+
+mainClassName = 'io.vertx.core.Launcher'
+def mainVerticle = 'io.bank.api.transactions.verticles.MainVerticle'
 
 shadowJar {
     classifier = ''
@@ -50,18 +53,18 @@ shadowJar {
 }
 
 run {
-  args = ['run', mainVerticle]
+    args = ['run', mainVerticle]
 }
 
 compileJava {
     options.incremental = true
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.8'
+}
+
 lombok {
     version = "1.16.20"
     sha256 = "c5178b18caaa1a15e17b99ba5e4023d2de2ebc18b58cde0f5a04ca4b31c10e6d"
-}
-
-task wrapper(type: Wrapper) {
-  gradleVersion = '4.8'
 }

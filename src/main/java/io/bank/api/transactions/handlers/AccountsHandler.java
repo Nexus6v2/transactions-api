@@ -3,20 +3,19 @@ package io.bank.api.transactions.handlers;
 import io.bank.api.transactions.dao.RedisDao;
 import io.bank.api.transactions.model.Account;
 import io.bank.api.transactions.model.CreateAccountRequest;
-import io.bank.api.transactions.model.Transaction;
 import io.bank.api.transactions.utils.Converter;
 import io.vertx.rxjava.ext.web.RoutingContext;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static io.bank.api.transactions.utils.KeysUtils.*;
+import static io.bank.api.transactions.utils.KeysUtils.ACCOUNT_KEY_PATTERN;
+import static io.bank.api.transactions.utils.KeysUtils.getAccountKey;
 import static java.net.HttpURLConnection.*;
 
 public class AccountsHandler {
-    private static final String ACCOUNT_ID = "accountId";
+    static final String ACCOUNT_ID = "accountId";
     
     private final RedisDao redisDao;
     
@@ -61,7 +60,7 @@ public class AccountsHandler {
         if (accountId == null) {
             context.fail(HTTP_BAD_REQUEST);
         }
-        redisDao.deleteHash(getAccountKey(accountId))
+        redisDao.deleteAccount(getAccountKey(accountId))
                 .subscribe(deleted -> {
                     if (deleted) {
                         context.response().setStatusCode(HTTP_OK).end();
@@ -86,27 +85,5 @@ public class AccountsHandler {
                         context.fail(HTTP_INTERNAL_ERROR);
                     }
                 }, context::fail);
-    }
-    
-    public void getAccountsTransactions(RoutingContext context) {
-        String accountId = context.pathParam(ACCOUNT_ID);
-        if (accountId == null) {
-            context.fail(HTTP_BAD_REQUEST);
-        }
-        
-        List<Transaction> accountsTransactions = redisDao.getKeys(TRANSACTION_KEY_PATTERN)
-                .parallelStream()
-                .map(redisDao::getValue)
-                .map(transactionSingle -> transactionSingle.toBlocking().value())
-                .map(transactionJson -> Converter.fromJson(transactionJson, Transaction.class))
-                .filter(transaction -> Objects.equals(accountId, transaction.getSenderId()) ||
-                                       Objects.equals(accountId, transaction.getRecipientId()))
-                .collect(Collectors.toList());
-        
-        if (accountsTransactions.isEmpty()) {
-            context.fail(HTTP_NOT_FOUND);
-        } else {
-            context.response().end(Converter.toJson(accountsTransactions));
-        }
     }
 }

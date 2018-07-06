@@ -42,6 +42,6 @@ To terminate http and redis servers just use SIGINT (Ctrl + C).
 * `Vert.x` - lightweight Netty-based framework for building reactive applications
 * `Lombok` - generating boilerplate Java code (accessors, checked exceptions, Object and Builder methods) in compile-time 
 * `RxJava` - composing asynchronous and event-based programs by using observable sequences
+* `Spock` - powerful declarative testing Groovy framework
 * `Lettuce` - awesome Redis client with RxJava support
 * `embedded-redis` - simple embedded Redis server
-* `JUnit` - testing classics
