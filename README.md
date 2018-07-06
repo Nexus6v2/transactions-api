@@ -6,7 +6,7 @@
 
 API would be available on default port `8080`. Redis embedder server would be started on `6379`.
 
-To terminate http and redis servers just use SIGINT (Ctrl + C).
+To terminate just use SIGINT (Ctrl+C).
 
 ## How to test
 `./gradlew clean test`
