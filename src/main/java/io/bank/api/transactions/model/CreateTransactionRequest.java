@@ -6,7 +6,8 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 public class CreateTransactionRequest {
-    private String amount;
+    private long amount;
+    private String currencyCode;
     private String senderAccountId;
     private String recipientAccountId;
 }

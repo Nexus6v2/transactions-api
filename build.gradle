@@ -25,6 +25,7 @@ dependencies {
 
     // Utils
     compile 'org.apache.commons:commons-pool2:2.4.3'
+    compile 'org.javamoney:moneta:1.1'
 
     // Serialization
     compile 'com.fasterxml.jackson.core:jackson-core:2.7.3'

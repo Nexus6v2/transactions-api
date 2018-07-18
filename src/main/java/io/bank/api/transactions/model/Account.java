@@ -4,7 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.javamoney.moneta.Money;
 
+import javax.money.Monetary;
 import java.time.LocalDateTime;
 
 import static io.bank.api.transactions.utils.CommonUtils.getShortId;
@@ -15,14 +17,14 @@ import static io.bank.api.transactions.utils.CommonUtils.getShortId;
 @AllArgsConstructor
 public class Account {
     private String id;
-    private String created;
-    private String balance;
+    private LocalDateTime created;
+    private Money balance;
     
     public static Account fromRequest(CreateAccountRequest request) {
         return Account.builder()
                 .id(getShortId())
-                .created(LocalDateTime.now().toString())
-                .balance(request.getBalance())
+                .created(LocalDateTime.now())
+                .balance(Money.of(request.getBalance(), Monetary.getCurrency(request.getCurrencyCode())))
                 .build();
     }
 }

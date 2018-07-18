@@ -27,11 +27,11 @@ class BaseIntegrationSpec extends Specification {
     protected String TRANSACTIONS_URL = "/transactions"
     protected String ACCOUNTS_URL = "/accounts"
 
-    protected CreateAccountRequest createAccountRequest = new CreateAccountRequest().setBalance("100000")
+    protected CreateAccountRequest createAccountRequest = new CreateAccountRequest().setBalance(100000)
     protected Account testAccountOne = Account.fromRequest(createAccountRequest)
     protected Account testAccountTwo = Account.fromRequest(createAccountRequest)
     protected CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest()
-            .setAmount("100")
+            .setAmount(100)
             .setSenderAccountId(testAccountOne.getId())
             .setRecipientAccountId(testAccountTwo.getId())
     protected Transaction testTransaction = Transaction.fromRequest(createTransactionRequest)

@@ -6,10 +6,6 @@ import io.bank.api.transactions.model.CreateAccountRequest;
 import io.bank.api.transactions.utils.Converter;
 import io.vertx.rxjava.ext.web.RoutingContext;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import static io.bank.api.transactions.utils.KeysUtils.ACCOUNT_KEY_PATTERN;
 import static io.bank.api.transactions.utils.KeysUtils.getAccountKey;
 import static java.net.HttpURLConnection.*;
@@ -42,17 +38,18 @@ public class AccountsHandler {
     }
     
     public void getAllAccounts(RoutingContext context) {
-        List<Map> accounts = redisDao.getKeys(ACCOUNT_KEY_PATTERN)
-                .parallelStream()
+        redisDao.getKeys(ACCOUNT_KEY_PATTERN)
                 .map(redisDao::getHash)
                 .map(accountSingle -> accountSingle.toBlocking().value())
-                .collect(Collectors.toList());
-        
-        if (accounts.isEmpty()) {
-            context.fail(HTTP_NOT_FOUND);
-        } else {
-            context.response().end(Converter.toJson(accounts));
-        }
+                .toList()
+                .subscribe(accounts -> {
+                    if (accounts.isEmpty()) {
+                        context.fail(HTTP_NOT_FOUND);
+                    } else {
+                        context.response().end(Converter.toJson(accounts));
+    
+                    }
+                });
     }
     
     public void deleteAccount(RoutingContext context) {
@@ -63,7 +60,7 @@ public class AccountsHandler {
         redisDao.deleteAccount(getAccountKey(accountId))
                 .subscribe(deleted -> {
                     if (deleted) {
-                        context.response().setStatusCode(HTTP_OK).end();
+                        context.response().end();
                     } else {
                         context.fail(HTTP_NOT_FOUND);
                     }
@@ -80,7 +77,7 @@ public class AccountsHandler {
         redisDao.createAccount(account)
                 .subscribe(createdAccount -> {
                     if (createdAccount != null) {
-                        context.response().setStatusCode(HTTP_OK).end(Converter.toJson(createdAccount));
+                        context.response().end(Converter.toJson(createdAccount));
                     } else {
                         context.fail(HTTP_INTERNAL_ERROR);
                     }

@@ -6,9 +6,7 @@ import io.bank.api.transactions.model.Transaction;
 import io.bank.api.transactions.utils.Converter;
 import io.vertx.rxjava.ext.web.RoutingContext;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static io.bank.api.transactions.handlers.AccountsHandler.ACCOUNT_ID;
 import static io.bank.api.transactions.utils.KeysUtils.TRANSACTION_KEY_PATTERN;
@@ -34,17 +32,17 @@ public class TransactionsHandler {
     }
     
     public void getAllTransactions(RoutingContext context) {
-        List<String> transactions = redisDao.getKeys(TRANSACTION_KEY_PATTERN)
-                .parallelStream()
+        redisDao.getKeys(TRANSACTION_KEY_PATTERN)
                 .map(redisDao::getValue)
                 .map(transactionSingle -> transactionSingle.toBlocking().value())
-                .collect(Collectors.toList());
-        
-        if (transactions.isEmpty()) {
-            context.fail(HTTP_NOT_FOUND);
-        } else {
-            context.response().end(Converter.toJson(transactions));
-        }
+                .toList()
+                .subscribe(transactions -> {
+                    if (transactions.isEmpty()) {
+                        context.fail(HTTP_NOT_FOUND);
+                    } else {
+                        context.response().end(Converter.toJson(transactions));
+                    }
+                }, context::fail);
     }
     
     public void getAccountsTransactions(RoutingContext context) {
@@ -53,20 +51,20 @@ public class TransactionsHandler {
             context.fail(HTTP_BAD_REQUEST);
         }
         
-        List<Transaction> accountsTransactions = redisDao.getKeys(TRANSACTION_KEY_PATTERN)
-                .parallelStream()
+        redisDao.getKeys(TRANSACTION_KEY_PATTERN)
                 .map(redisDao::getValue)
                 .map(transactionSingle -> transactionSingle.toBlocking().value())
                 .map(transactionJson -> Converter.fromJson(transactionJson, Transaction.class))
                 .filter(transaction -> Objects.equals(accountId, transaction.getSenderId()) ||
                                        Objects.equals(accountId, transaction.getRecipientId()))
-                .collect(Collectors.toList());
-        
-        if (accountsTransactions.isEmpty()) {
-            context.fail(HTTP_NOT_FOUND);
-        } else {
-            context.response().end(Converter.toJson(accountsTransactions));
-        }
+                .toList()
+                .subscribe(transactions -> {
+                    if (transactions.isEmpty()) {
+                        context.fail(HTTP_NOT_FOUND);
+                    } else {
+                        context.response().end(Converter.toJson(transactions));
+                    }
+                }, context::fail);
     }
     
     public void createTransaction(RoutingContext context) {
@@ -79,7 +77,7 @@ public class TransactionsHandler {
         redisDao.createTransaction(transaction)
                 .subscribe(executedTransaction -> {
                     if (executedTransaction != null) {
-                        context.response().end(executedTransaction);
+                        context.response().end(Converter.toJson(executedTransaction));
                     } else {
                         context.fail(HTTP_INTERNAL_ERROR);
                     }

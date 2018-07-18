@@ -15,24 +15,30 @@ To terminate just use SIGINT (Ctrl+C).
 * `/health` - healthcheck 
 1. Accounts
     * `/accounts #GET` - get list of all existing accounts
-    * `/accounts #POST` - create new account. Request body: 
+    * `/accounts #POST` - create new account. 
+        * Note: assuming that account's balance is in minor currency units. 
+        * Request body: 
         ```json
         { 
-            "balance": 100500 
+            "balance": 10000000,
+            "currencyCode": "USD"
         }
         ```
     * `/accounts/:accountId #GET` - get specific account by it's id
     * `/accounts/:accountId #DELETE` - delete existing account
     * `/accounts/:accountId/transactions` - get all transactions of this account
     
-2. Transactions
+* Transactions
     * `/transactions #GET` - get list of all executed transactions
-    * `/transactions #POST` - execute new transaction. Request body: 
+    * `/transactions #POST` - execute new transaction.
+        * Note: assuming that transaction amount represented in minor units. 
+        * Note: transactions between accounts with different currencies are not supported. 
+        * Request body: 
         ```json
         { 
             "senderAccountId": "2b69ffa4", 
             "recipientAccountId": "473dc600",
-            "amount": 1000
+            "amount": 100000
         }
         ```
     * `/transactions/:transactionId #GET` - get transaction info by it's id

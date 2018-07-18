@@ -16,14 +16,14 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
         assert response.status == 404
     }
 
-    def "Return 404 if sender account does not exist"() {
+    def "Return 500 if sender account does not exist"() {
         setup:
         redisDao.createAccount(testAccountOne)
         redisDao.createAccount(testAccountTwo)
         CreateTransactionRequest transactionRequest = new CreateTransactionRequest()
-        transactionRequest.setAmount("10000000000")
-        transactionRequest.setSenderAccountId("someInvalidId")
-        transactionRequest.setRecipientAccountId(testAccountTwo.id)
+                .setAmount(10000000000)
+                .setSenderAccountId("someInvalidId")
+                .setRecipientAccountId(testAccountTwo.id)
 
         when:
         def response = restClient.post(
@@ -41,9 +41,9 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
         redisDao.createAccount(testAccountOne)
         redisDao.createAccount(testAccountTwo)
         CreateTransactionRequest transactionRequest = new CreateTransactionRequest()
-        transactionRequest.setAmount("10000000000")
-        transactionRequest.setSenderAccountId(testAccountOne.id)
-        transactionRequest.setRecipientAccountId(testAccountTwo.id)
+                .setAmount(10000000000)
+                .setSenderAccountId(testAccountOne.id)
+                .setRecipientAccountId(testAccountTwo.id)
 
         when:
         def response = restClient.post(
@@ -66,7 +66,6 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
 
         then:
         JSONAssert.assertEquals(objectMapper.writeValueAsString(testAccounts), objectMapper.writeValueAsString(response.data), JSONCompareMode.LENIENT)
-
     }
 
     def "Get account by id"() {
