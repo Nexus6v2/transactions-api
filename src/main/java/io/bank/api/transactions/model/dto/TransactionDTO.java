@@ -1,11 +1,15 @@
 package io.bank.api.transactions.model.dto;
 
 import io.bank.api.transactions.model.Transaction;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TransactionDTO {
     private String id;
     private String created;
