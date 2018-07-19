@@ -1,4 +1,4 @@
-package io.bank.api.transactions.model;
+package io.bank.api.transactions.model.dto;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

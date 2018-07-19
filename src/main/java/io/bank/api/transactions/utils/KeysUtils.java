@@ -3,6 +3,13 @@ package io.bank.api.transactions.utils;
 import static java.lang.String.format;
 
 public class KeysUtils {
+    public static final String ID = "id";
+    public static final String BALANCE = "balance";
+    public static final String CREATED = "created";
+    public static final String CURRENCY = "currency";
+    public static final String AMOUNT = "amount";
+    public static final String SENDER_ID = "senderId";
+    public static final String RECIPIENT_ID = "recipientId";
     public static final String ACCOUNT_KEY_PATTERN = "account:*";
     public static final String TRANSACTION_KEY_PATTERN = "transaction:*";
     

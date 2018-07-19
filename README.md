@@ -38,6 +38,7 @@ To terminate just use SIGINT (Ctrl+C).
         { 
             "senderAccountId": "2b69ffa4", 
             "recipientAccountId": "473dc600",
+            "currencyCode": "USD",
             "amount": 100000
         }
         ```

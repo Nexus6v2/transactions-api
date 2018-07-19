@@ -2,7 +2,8 @@ package io.bank.api.transactions.handlers;
 
 import io.bank.api.transactions.dao.RedisDao;
 import io.bank.api.transactions.model.Account;
-import io.bank.api.transactions.model.CreateAccountRequest;
+import io.bank.api.transactions.model.dto.AccountDTO;
+import io.bank.api.transactions.model.dto.CreateAccountRequest;
 import io.bank.api.transactions.utils.Converter;
 import io.vertx.rxjava.ext.web.RoutingContext;
 
@@ -25,15 +26,14 @@ public class AccountsHandler {
             context.fail(HTTP_BAD_REQUEST);
         }
         redisDao.getHash(getAccountKey(accountId))
-                .map(account -> {
-                    if (account.isEmpty()) {
+                .doOnEach(account -> {
+                    if (account == null) {
                         context.fail(HTTP_NOT_FOUND);
-                        return "";
-                    } else {
-                        return account;
                     }
                 })
-                .map(Converter::toJson)
+                .map(Account::fromHash)
+                .map(AccountDTO::fromAccount)
+                .map(Converter::convertToJson)
                 .subscribe(context.response()::end, context::fail);
     }
     
@@ -41,13 +41,14 @@ public class AccountsHandler {
         redisDao.getKeys(ACCOUNT_KEY_PATTERN)
                 .map(redisDao::getHash)
                 .map(accountSingle -> accountSingle.toBlocking().value())
+                .map(Account::fromHash)
+                .map(AccountDTO::fromAccount)
                 .toList()
                 .subscribe(accounts -> {
                     if (accounts.isEmpty()) {
                         context.fail(HTTP_NOT_FOUND);
                     } else {
-                        context.response().end(Converter.toJson(accounts));
-    
+                        context.response().end(Converter.convertToJson(accounts));
                     }
                 });
     }
@@ -60,7 +61,7 @@ public class AccountsHandler {
         redisDao.deleteAccount(getAccountKey(accountId))
                 .subscribe(deleted -> {
                     if (deleted) {
-                        context.response().end();
+                        context.response().setStatusCode(HTTP_NO_CONTENT).end();
                     } else {
                         context.fail(HTTP_NOT_FOUND);
                     }
@@ -72,15 +73,15 @@ public class AccountsHandler {
         if (accountRequestBody == null) {
             context.response().setStatusCode(HTTP_BAD_REQUEST).end();
         }
-        CreateAccountRequest createAccountRequest = Converter.fromJson(accountRequestBody, CreateAccountRequest.class);
-        Account account = Account.fromRequest(createAccountRequest);
-        redisDao.createAccount(account)
-                .subscribe(createdAccount -> {
-                    if (createdAccount != null) {
-                        context.response().end(Converter.toJson(createdAccount));
-                    } else {
+        CreateAccountRequest createAccountRequest = Converter.convertFromJson(accountRequestBody, CreateAccountRequest.class);
+        redisDao.createAccount(Account.fromRequest(createAccountRequest))
+                .doOnEach(createdAccount -> {
+                    if (createdAccount == null) {
                         context.fail(HTTP_INTERNAL_ERROR);
                     }
-                }, context::fail);
+                })
+                .map(AccountDTO::fromAccount)
+                .map(Converter::convertToJson)
+                .subscribe(createdAccount -> context.response().end(createdAccount), context::fail);
     }
 }

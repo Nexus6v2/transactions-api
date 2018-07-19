@@ -8,13 +8,13 @@ public class Converter {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     
     @SneakyThrows
-    public static String toJson(Object object) {
+    public static String convertToJson(Object object) {
         OBJECT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         return OBJECT_MAPPER.writeValueAsString(object);
     }
     
     @SneakyThrows
-    public static <T>T fromJson(String json, Class<T> klass) {
+    public static <T>T convertFromJson(String json, Class<T> klass) {
         return OBJECT_MAPPER.readValue(json, klass);
     }
 }

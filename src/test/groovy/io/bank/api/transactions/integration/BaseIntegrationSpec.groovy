@@ -5,9 +5,9 @@ import com.lambdaworks.redis.RedisURI
 import groovyx.net.http.RESTClient
 import io.bank.api.transactions.dao.RedisDao
 import io.bank.api.transactions.model.Account
-import io.bank.api.transactions.model.CreateAccountRequest
-import io.bank.api.transactions.model.CreateTransactionRequest
 import io.bank.api.transactions.model.Transaction
+import io.bank.api.transactions.model.dto.CreateAccountRequest
+import io.bank.api.transactions.model.dto.CreateTransactionRequest
 import io.bank.api.transactions.verticles.MainVerticle
 import io.vertx.rxjava.core.Vertx
 import spock.lang.Shared
@@ -27,11 +27,17 @@ class BaseIntegrationSpec extends Specification {
     protected String TRANSACTIONS_URL = "/transactions"
     protected String ACCOUNTS_URL = "/accounts"
 
-    protected CreateAccountRequest createAccountRequest = new CreateAccountRequest().setBalance(100000)
+    def createAccountRequest() {
+        return new CreateAccountRequest()
+    }
+    protected CreateAccountRequest createAccountRequest = new CreateAccountRequest()
+            .setBalance(100000)
+            .setCurrencyCode("USD")
     protected Account testAccountOne = Account.fromRequest(createAccountRequest)
     protected Account testAccountTwo = Account.fromRequest(createAccountRequest)
     protected CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest()
             .setAmount(100)
+            .setCurrencyCode("USD")
             .setSenderAccountId(testAccountOne.getId())
             .setRecipientAccountId(testAccountTwo.getId())
     protected Transaction testTransaction = Transaction.fromRequest(createTransactionRequest)

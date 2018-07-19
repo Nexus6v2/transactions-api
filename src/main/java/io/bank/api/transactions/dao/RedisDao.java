@@ -17,19 +17,9 @@ import rx.schedulers.Schedulers;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.bank.api.transactions.utils.KeysUtils.getAccountKey;
-import static io.bank.api.transactions.utils.KeysUtils.getTransactionKey;
-import static java.lang.String.format;
+import static io.bank.api.transactions.utils.KeysUtils.*;
 
 public class RedisDao {
-    private static final String ID = "id";
-    private static final String BALANCE = "balance";
-    private static final String CREATED = "created";
-    private static final String CURRENCY = "currency";
-    private static final String AMOUNT = "amount";
-    private static final String SENDER_ID = "senderId";
-    private static final String RECIPIENT_ID = "recipientId";
-    
     private final GenericObjectPool<StatefulRedisConnection<String, String>> connectionPool;
     
     public RedisDao(RedisURI redisURI) {
@@ -52,24 +42,6 @@ public class RedisDao {
                 .doAfterTerminate(connection::close);
     }
     
-    public Single<String> getValue(String valueKey) {
-        RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
-        return connection.get(valueKey)
-                .toSingle()
-                .subscribeOn(Schedulers.io())
-                .doAfterTerminate(connection::close);
-    }
-    
-    public Single<Boolean> deleteValue(String valueKey) {
-        RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
-        // If response is not 0 - value has been deleted
-        return connection.del(valueKey)
-                .toSingle()
-                .subscribeOn(Schedulers.io())
-                .map(response -> response != 0)
-                .doAfterTerminate(connection::close);
-    }
-    
     public Single<Boolean> deleteAccount(String hashKey) {
         RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
         // If response is not 0 - hash has been deleted
@@ -80,7 +52,7 @@ public class RedisDao {
                 .map(response -> response != 0);
     }
     
-    public Single<Map<String, String>> createAccount(Account account) {
+    public Single<Account> createAccount(Account account) {
         RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
         return connection.multi()
                 .toSingle()
@@ -94,97 +66,51 @@ public class RedisDao {
                     connection.hset(accountKey, CURRENCY, account.getBalance().getCurrency().getCurrencyCode()).subscribe();
                     connection.hset(accountKey, CREATED, String.valueOf(account.getCreated())).subscribe();
                     connection.exec().subscribe();
-                    return connection.hgetall(accountKey).toSingle();
+                    return connection.hgetall(accountKey)
+                            .toSingle()
+                            .map(Account::fromHash);
                 });
     }
     
-    public Single<Map> createTransaction(Transaction transaction) {
+    public Single<Transaction> createTransaction(Transaction transaction) {
         RedisReactiveCommands<String, String> connection = borrowConnection().reactive();
-    
+        
         //Establishing transaction data
         long transactionAmount = transaction.getAmount().getNumber().longValueExact();
         String transactionKey = getTransactionKey(transaction.getId());
         String senderKey = getAccountKey(transaction.getSenderId());
         String recipientKey = getAccountKey(transaction.getRecipientId());
         
-        return connection.watch(senderKey, recipientKey)
+        connection.watch(senderKey, recipientKey).subscribe();
+        return Observable.zip(
+                connection.hget(senderKey, BALANCE),
+                connection.hget(senderKey, CURRENCY),
+                connection.hget(recipientKey, CURRENCY),
+                (senderBalance, senderCurrency, recipientCurrency) -> {
+                    //Check that sender balance is enough for transaction
+                    if (Long.valueOf(senderBalance) < transactionAmount) {
+                        throw new IllegalStateException("Not enough funds for transaction");
+                    }
+                    
+                    //Check that both accounts and transaction have the same currency
+                    if (!(Objects.equals(senderCurrency, recipientCurrency) && Objects.equals(senderCurrency, transaction.getAmount().getCurrency().getCurrencyCode()))) {
+                        throw new IllegalStateException("Recipient, sender and transaction currencies must be the same");
+                    }
+                    
+                    return null;
+                })
                 .toSingle()
                 .subscribeOn(Schedulers.io())
-                .doAfterTerminate(connection::unwatch)
-                .doAfterTerminate(() ->  {
+                .doAfterTerminate(() -> {
                     connection.unwatch().subscribe();
                     connection.close();
-                })
-                .map(watch -> {
-//                    //Check if both accounts exist
-//                    connection.hexists(senderKey, BALANCE)
-//                            .subscribe(exist -> {
-//                                if (!exist) {
-//                                    throw new IllegalStateException(format("Account with id %s does not exits.", transaction.getSenderId()));
-//                                }
-//                            });
-//                    connection.hexists(recipientKey, BALANCE)
-//                            .subscribe(exist -> {
-//                                if (!exist) {
-//                                    throw new IllegalStateException(format("Account with id %s does not exist.", transaction.getRecipientId()));
-//                                }
-//                            });
-//
-//                    //Check if sender balance is enough
-//                    connection.hget(senderKey, BALANCE)
-//                            .subscribe(balance -> {
-//                                if (Long.valueOf(balance) < transactionAmount) {
-//                                    throw new IllegalStateException(format("Not enough funds for transaction. Required: %s. Actual: %s.", transactionAmount, balance));
-//                                }
-//                            });
-//
-//                    //Check if both accounts and transaction have the same currency
-//                    Observable.zip(
-//                            connection.hget(senderKey, CURRENCY),
-//                            connection.hget(recipientKey, CURRENCY),
-//                            (senderAccountCurrency, recipientAccountCurrency) ->
-//                                    (Objects.equals(senderAccountCurrency, recipientAccountCurrency) &&
-//                                     Objects.equals(senderAccountCurrency, transaction.getAmount().getCurrency().getCurrencyCode()))
-//                    ).subscribe(equals -> {
-//                        if (!equals) {
-//                            throw new IllegalStateException("Recipient, sender and transaction currencies must be the same");
-//                        }
-//                    });
-                    
-                    Observable.zip(
-                            connection.hexists(senderKey, BALANCE),
-                            connection.hexists(recipientKey, BALANCE),
-                            connection.hget(senderKey, BALANCE),
-                            connection.hget(senderKey, CURRENCY),
-                            connection.hget(recipientKey, CURRENCY),
-                            (senderAccountExist, recipientAccountExist, senderBalance, senderCurrency, recipientCurrency) -> {
-                                if (!senderAccountExist) {
-                                    throw new IllegalStateException(format("Account with id %s does not exits.", transaction.getSenderId()));
-                                }
-
-                                if (!recipientAccountExist) {
-                                    throw new IllegalStateException(format("Account with id %s does not exits.", transaction.getRecipientId()));
-                                }
-
-                                if (Long.valueOf(senderBalance) < transactionAmount) {
-                                    throw new IllegalStateException(format("Not enough funds for transaction. Required: %s. Actual: %s.", transactionAmount, senderBalance));
-                                }
-
-                                if (!(Objects.equals(senderCurrency, recipientCurrency) && Objects.equals(senderCurrency, transaction.getAmount().getCurrency().getCurrencyCode()))) {
-                                    throw new IllegalStateException("Recipient, sender and transaction currencies must be the same");
-                                }
-
-                                return null;
-                            }).subscribe(s -> {}, e -> {
-                                throw new IllegalStateException(e.getMessage());
-                            });
-                    
-                    return watch;
-                }).flatMap(watch -> {
+                }).flatMap(x -> {
                     connection.multi().subscribe();
+                    
                     //Executing transaction
                     connection.hincrby(senderKey, BALANCE, -transactionAmount).subscribe();
                     connection.hincrby(recipientKey, BALANCE, transactionAmount).subscribe();
+                    // Saving transaction info
                     connection.hset(transactionKey, ID, transaction.getId()).subscribe();
                     connection.hset(transactionKey, AMOUNT, String.valueOf(transaction.getAmount().getNumber().longValueExact())).subscribe();
                     connection.hset(transactionKey, CURRENCY, transaction.getAmount().getCurrency().getCurrencyCode()).subscribe();
@@ -193,7 +119,9 @@ public class RedisDao {
                     connection.hset(transactionKey, RECIPIENT_ID, transaction.getRecipientId()).subscribe();
                     connection.exec().subscribe();
                     
-                    return connection.hgetall(transactionKey).toSingle();
+                    return connection.hgetall(transactionKey)
+                            .toSingle()
+                            .map(Transaction::fromHash);
                 });
     }
     
