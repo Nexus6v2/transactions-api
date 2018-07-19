@@ -44,12 +44,12 @@ class BaseIntegrationSpec extends Specification {
     }
 
     protected CreateAccountRequest createAccountRequest = new CreateAccountRequest()
-            .setBalance(100000)
+            .setBalance(10000)
             .setCurrencyCode("USD")
     protected Account testAccountOne = Account.fromRequest(createAccountRequest)
     protected Account testAccountTwo = Account.fromRequest(createAccountRequest)
     protected CreateTransactionRequest createTransactionRequest = new CreateTransactionRequest()
-            .setAmount(100)
+            .setAmount(1000)
             .setCurrencyCode("USD")
             .setSenderAccountId(testAccountOne.getId())
             .setRecipientAccountId(testAccountTwo.getId())

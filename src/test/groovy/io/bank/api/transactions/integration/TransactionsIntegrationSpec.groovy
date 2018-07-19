@@ -3,6 +3,7 @@ package io.bank.api.transactions.integration
 import io.bank.api.transactions.model.Account
 import io.bank.api.transactions.model.Transaction
 import io.bank.api.transactions.model.dto.AccountDTO
+import io.bank.api.transactions.model.dto.CreateAccountRequest
 import io.bank.api.transactions.model.dto.CreateTransactionRequest
 import io.bank.api.transactions.model.dto.TransactionDTO
 import io.bank.api.transactions.utils.Converter
@@ -16,6 +17,22 @@ import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 
 class TransactionsIntegrationSpec extends BaseIntegrationSpec {
+
+    private HttpResponse postTransaction(CreateTransactionRequest createTransactionRequest) {
+        HttpPost request = new HttpPost(TRANSACTIONS_URL)
+        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
+        request.setEntity(new StringEntity(objectMapper.writeValueAsString(createTransactionRequest)))
+
+        return httpClient.execute(request, null).get()
+    }
+
+    private HttpResponse postAccount(CreateAccountRequest createAccountRequest) {
+        HttpPost request = new HttpPost(ACCOUNTS_URL)
+        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
+        request.setEntity(new StringEntity(objectMapper.writeValueAsString(createAccountRequest)))
+
+        return httpClient.execute(request, null).get()
+    }
 
     def "Return 404 if there are no registered accounts"() {
         when:
@@ -52,11 +69,7 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
                 .setRecipientAccountId(testAccountTwo.id)
 
         when:
-        HttpPost request = new HttpPost(TRANSACTIONS_URL)
-        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
-        request.setEntity(new StringEntity(objectMapper.writeValueAsString(transactionRequest)))
-
-        HttpResponse response = httpClient.execute(request, null).get()
+        HttpResponse response = postTransaction(transactionRequest)
 
         then:
         assert response.getStatusLine().getStatusCode() == 500
@@ -72,11 +85,7 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
                 .setRecipientAccountId(testAccountTwo.id)
 
         when:
-        HttpPost request = new HttpPost(TRANSACTIONS_URL)
-        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
-        request.setEntity(new StringEntity(objectMapper.writeValueAsString(transactionRequest)))
-
-        HttpResponse response = httpClient.execute(request, null).get()
+        HttpResponse response = postTransaction(transactionRequest)
 
         then:
         assert response.getStatusLine().getStatusCode() == 500
@@ -93,11 +102,7 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
                 .setRecipientAccountId(testAccountTwo.id)
 
         when:
-        HttpPost request = new HttpPost(TRANSACTIONS_URL)
-        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
-        request.setEntity(new StringEntity(objectMapper.writeValueAsString(transactionRequest)))
-
-        HttpResponse response = httpClient.execute(request, null).get()
+        HttpResponse response = postTransaction(transactionRequest)
 
         then:
         assert response.getStatusLine().getStatusCode() == 500
@@ -135,12 +140,7 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
 
     def "Create account"() {
         when:
-        HttpPost request = new HttpPost(ACCOUNTS_URL)
-        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
-        request.setEntity(new StringEntity(objectMapper.writeValueAsString(createAccountRequest)))
-
-        HttpResponse response = httpClient.execute(request, null).get()
-
+        HttpResponse response = postAccount(createAccountRequest)
         AccountDTO createdAccount = Converter.convertFromJson(EntityUtils.toString(response.getEntity()), AccountDTO.class)
 
         then:
@@ -201,12 +201,7 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
         redisDao.createAccount(testAccountTwo).toBlocking().value()
 
         when:
-        HttpPost request = new HttpPost(TRANSACTIONS_URL)
-        request.addHeader(CONTENT_TYPE, APPLICATION_JSON)
-        request.setEntity(new StringEntity(objectMapper.writeValueAsString(createTransactionRequest)))
-
-        HttpResponse response = httpClient.execute(request, null).get()
-
+        HttpResponse response = postTransaction(createTransactionRequest)
         TransactionDTO createdTransaction = Converter.convertFromJson(EntityUtils.toString(response.getEntity()), TransactionDTO.class)
         TransactionDTO expectedTransaction = TransactionDTO.fromTransaction(testTransaction)
 
@@ -238,6 +233,21 @@ class TransactionsIntegrationSpec extends BaseIntegrationSpec {
     }
 
     def "Execute concurrent transaction's requests on the same account correctly"() {
+        setup:
+        redisDao.createAccount(testAccountOne).toBlocking().value()
+        redisDao.createAccount(testAccountTwo).toBlocking().value()
 
+        List<CreateTransactionRequest> transactionRequests = new ArrayList<>()
+        for (int i; i < 20; i++) {
+            transactionRequests.add(createTransactionRequest)
+        }
+        transactionRequests.parallelStream().forEach({ transactionRequest -> postTransaction(transactionRequest)})
+
+        when:
+        HttpResponse response = httpClient.execute(new HttpGet(getAccountUrl(testAccountOne.id)), null).get()
+        AccountDTO senderAccount = Converter.convertFromJson(EntityUtils.toString(response.getEntity()), AccountDTO.class)
+
+        then:
+        assert senderAccount.getBalance() == 0
     }
 }
